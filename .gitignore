@@ -1,0 +1,6 @@
+# Secrets locaux — ne jamais committer (GitHub Pages gratuit = repo public)
+.secrets/
+
+# Fichiers Claude Code (usage local uniquement)
+.claude/
+CLAUDE.md

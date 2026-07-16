@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DV Food Map — la carte des restos de l'équipe</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Figtree:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ================= Écran de connexion ================= -->
+  <div id="auth">
+    <div class="auth-card">
+      <div class="auth-brand">Digital Value · Food Map</div>
+      <h1 class="auth-title">Où on mange,<br/>ce midi&nbsp;?</h1>
+      <p class="auth-sub">La carte des restos de l'équipe, autour du 11&nbsp;rue de la Chaussée&nbsp;d'Antin.</p>
+
+      <div class="auth-tabs" role="tablist">
+        <button id="auth-tab-login" class="active" type="button">Se connecter</button>
+        <button id="auth-tab-signup" type="button">Créer un compte</button>
+      </div>
+
+      <div id="auth-msg" class="hidden"></div>
+
+      <form id="auth-form" novalidate>
+        <div class="field">
+          <label for="auth-email">Email</label>
+          <input id="auth-email" class="input" type="email" autocomplete="email" placeholder="prenom.nom@digitalvalue.fr" required />
+        </div>
+        <div class="field">
+          <label for="auth-password">Mot de passe</label>
+          <input id="auth-password" class="input" type="password" autocomplete="current-password" minlength="8" required />
+        </div>
+        <p id="auth-domain-note" class="auth-note hidden">Réservé aux adresses <b>@digitalvalue.fr</b> — un email de confirmation te sera envoyé.</p>
+        <button id="auth-submit" class="btn" type="submit">Se connecter</button>
+      </form>
+
+      <div class="auth-links">
+        <button id="auth-forgot" type="button">Mot de passe oublié&nbsp;?</button>
+        <button id="auth-resend" type="button" class="hidden">Renvoyer l'email de confirmation</button>
+      </div>
+      <p class="auth-demo">Pas de compte&nbsp;? <a href="?demo=1">Voir la démo</a></p>
+    </div>
+  </div>
+
+  <!-- ================= Application ================= -->
+  <div id="app" class="hidden">
+    <!-- visible uniquement en mode démo (body.demo, voir styles.css) -->
+    <div id="demo-banner"><span>Démo publique — données en lecture seule</span><a href="./">Se connecter</a></div>
+    <header class="topbar">
+      <div class="brand"><span class="dv">DV</span><span class="name">Food Map</span></div>
+      <nav class="view-tabs">
+        <a href="#carte" id="tab-map" class="active">Carte</a>
+        <a href="#liste" id="tab-list">Liste</a>
+      </nav>
+      <div class="spacer"></div>
+      <span class="user-name" id="user-name"></span>
+      <button id="btn-logout" class="btn-quiet" type="button">Se déconnecter</button>
+      <button id="btn-add" class="btn" type="button">＋<span>&nbsp;Ajouter un restaurant</span></button>
+    </header>
+
+    <div class="toolbar">
+      <div class="searchbox">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>
+        <input id="q" class="input" type="search" placeholder="Chercher un resto, une cuisine…" autocomplete="off" />
+      </div>
+      <button id="btn-filters" class="btn-ghost btn" type="button">Filtres <span id="filters-badge" class="hidden"></span></button>
+      <button id="btn-random" class="btn-ghost btn" type="button" title="Tire au sort un resto parmi les filtres actifs">🎲<span>&nbsp;Choisis pour moi</span></button>
+      <span id="count-label"></span>
+
+      <!-- popover filtres -->
+      <div id="filters-pop" class="hidden">
+        <div class="f-group">
+          <h4>Note minimale</h4>
+          <div class="sliderline">
+            <input id="f-rating" type="range" min="0" max="5" step="0.5" value="0" />
+            <output id="f-rating-val">Toutes</output>
+          </div>
+        </div>
+        <div class="f-group">
+          <h4>Temps à pied</h4>
+          <div class="sliderline">
+            <input id="f-walk" type="range" min="5" max="31" step="1" value="31" />
+            <output id="f-walk-val">Sans limite</output>
+          </div>
+        </div>
+        <div class="f-group">
+          <h4>Prix</h4>
+          <div id="f-prices" class="chiprow"></div>
+          <div id="price-legend" class="price-hint"></div>
+        </div>
+        <div class="f-group">
+          <h4>Cuisine</h4>
+          <div id="f-foods" class="chiprow"></div>
+        </div>
+        <div class="f-group">
+          <h4>Pratique</h4>
+          <div id="f-tags" class="chiprow"></div>
+        </div>
+        <div class="f-foot">
+          <button id="btn-filters-reset" class="btn-quiet" type="button">Tout réinitialiser</button>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <section id="view-map">
+        <div id="map"></div>
+        <div id="map-empty" class="hidden">Aucun restaurant pour l'instant —<button id="btn-add-empty" type="button">ajoute le premier</button></div>
+      </section>
+
+      <section id="view-list" class="hidden">
+        <div class="list-wrap">
+          <div class="list-head">
+            <h2>Les restos de l'équipe</h2>
+            <div class="sort-row" role="group" aria-label="Trier">
+              <button id="sort-rating" class="active" type="button">Note</button>
+              <button id="sort-walk" type="button">À pied</button>
+              <button id="sort-new" type="button">Nouveau</button>
+            </div>
+          </div>
+          <ul id="list-rows" class="rows"></ul>
+          <div id="list-empty" class="list-empty hidden">
+            <b>La carte est vide.</b>
+            Ajoute le premier restaurant avec le bouton en haut à droite.
+          </div>
+        </div>
+      </section>
+
+      <!-- panneau de détail -->
+      <aside id="panel" aria-label="Détail du restaurant">
+        <div class="panel-head">
+          <div class="top">
+            <h2 id="p-name"></h2>
+            <button id="p-close" type="button" title="Fermer">✕</button>
+          </div>
+          <div id="p-address"></div>
+          <div id="p-chips"></div>
+        </div>
+        <div class="panel-body">
+          <div class="p-section">Avis</div>
+          <div id="p-reviews"></div>
+
+          <div class="p-section" id="p-section-your-review">Votre avis</div>
+          <button id="btn-review-open" class="btn btn-ghost" type="button" style="width:100%">Laisser un avis</button>
+          <div id="myreview" class="myreview hidden">
+            <div class="star-input-row">
+              <div id="star-input" tabindex="0" role="slider" aria-label="Note sur 5"
+                   aria-valuemin="0.5" aria-valuemax="5" title="Clique sur les étoiles (moitié gauche = demi-étoile)"></div>
+              <output id="my-rating-val" class="mono">4,0</output>
+            </div>
+            <textarea id="my-comment" class="input" maxlength="2000" placeholder="Un mot pour les collègues ? (facultatif)"></textarea>
+            <div class="foot">
+              <button id="btn-review-save" class="btn" type="button">Publier mon avis</button>
+              <button id="btn-review-cancel" class="btn-quiet" type="button">Annuler</button>
+              <button id="btn-review-delete" class="btn-danger hidden" type="button">Supprimer</button>
+            </div>
+          </div>
+          <div id="p-added"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- ================= Modale restaurant ================= -->
+  <div id="modal-resto" class="overlay hidden">
+    <div class="modal">
+      <h3 id="mr-title">Ajouter un restaurant</h3>
+      <div id="mr-msg" class="hidden"></div>
+      <div class="field">
+        <label for="r-name">Nom</label>
+        <input id="r-name" class="input" type="text" maxlength="120" placeholder="Chez Prosper" />
+      </div>
+      <div class="field">
+        <label for="r-address">Adresse</label>
+        <div class="geo-row">
+          <input id="r-address" class="input" type="text" maxlength="300" placeholder="12 rue Machin, 75009 Paris" />
+          <button id="btn-geocode" class="btn-ghost btn" type="button">Localiser</button>
+        </div>
+        <div id="geo-result"></div>
+      </div>
+      <div class="field">
+        <label for="r-food">Cuisine</label>
+        <input id="r-food" class="input" type="text" maxlength="60" list="food-options" placeholder="Italien, Japonais, Boulangerie…" />
+        <datalist id="food-options"></datalist>
+      </div>
+      <div class="field">
+        <label>Pratique</label>
+        <div id="r-tags" class="chiprow"></div>
+      </div>
+      <div class="field">
+        <label>Prix</label>
+        <div id="r-prices" class="seg">
+          <button type="button" data-v="€" title="Moins de 10 € par personne">€</button>
+          <button type="button" data-v="€€" title="10 à 15 € par personne">€€</button>
+          <button type="button" data-v="€€€" title="15 à 25 € par personne">€€€</button>
+          <button type="button" data-v="€€€€" title="Plus de 25 € par personne">€€€€</button>
+        </div>
+        <div id="price-hint" class="price-hint"></div>
+      </div>
+      <div class="foot">
+        <button id="btn-resto-cancel" class="btn-ghost btn" type="button">Annuler</button>
+        <button id="btn-resto-save" class="btn" type="button" disabled>Ajouter à la carte</button>
+      </div>
+      <button id="btn-resto-delete" class="btn-danger hidden" type="button" style="width:100%;margin-top:8px;">Supprimer ce restaurant</button>
+    </div>
+  </div>
+
+  <!-- ================= Modale nouveau mot de passe ================= -->
+  <div id="modal-pass" class="overlay hidden">
+    <div class="modal">
+      <h3>Nouveau mot de passe</h3>
+      <div class="field">
+        <label for="np-password">Choisis un nouveau mot de passe</label>
+        <input id="np-password" class="input" type="password" minlength="8" autocomplete="new-password" />
+      </div>
+      <div class="foot">
+        <button id="btn-pass-save" class="btn" type="button">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" role="status"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="demo-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
