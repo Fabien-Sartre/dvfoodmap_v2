@@ -45,7 +45,7 @@ Pages serves the `main` branch as-is.
 | Hosting | GitHub Pages, public repo | $0 |
 | Database, auth, API | Supabase free tier (Postgres + GoTrue + PostgREST) | $0 |
 | Confirmation emails | Brevo SMTP, free tier | $0 |
-| Map tiles | Leaflet + CARTO | $0 |
+| Map tiles | Leaflet + OpenStreetMap | $0 |
 | Geocoding | Nominatim (OpenStreetMap), no API key | $0 |
 
 The browser talks to Supabase's auto-generated REST API directly; there is no

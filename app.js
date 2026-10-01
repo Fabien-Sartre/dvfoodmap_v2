@@ -231,8 +231,8 @@
     const o = C.OFFICES[0];
     map = L.map("map", { zoomControl: false }).setView([o.lat, o.lng], 16);
     L.control.zoom({ position: "bottomright" }).addTo(map);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      attribution: "&copy; OpenStreetMap &amp; CARTO", subdomains: "abcd", maxZoom: 20
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
     }).addTo(map);
 
     // signature : anneaux "minutes à pied" autour de chaque bureau
