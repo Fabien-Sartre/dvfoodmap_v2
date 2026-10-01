@@ -254,7 +254,6 @@ main{ flex:1; min-height:0; position:relative; }
   box-shadow:var(--shadow-soft);
 }
 .leaflet-tooltip.dv-tip::before{ display:none; }
-.leaflet-tile-pane{ filter:grayscale(.85) brightness(1.06) contrast(.92); } /* OSM désaturé, façon "light" */
 .leaflet-control-attribution{ font-size:10px; background:rgba(246,246,243,.8) !important; }
 
 /* vue liste */
